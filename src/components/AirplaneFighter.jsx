@@ -1,33 +1,32 @@
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 
-const Airplane = ({ color = "#3B82F6" }) => (
-  <svg viewBox="0 0 100 100" className="w-full h-full">
-    <path
-      d="M50 10 L60 40 L90 50 L60 60 L50 90 L40 60 L10 50 L40 40 Z"
-      fill={color}
-      stroke="white"
-      strokeWidth="2"
-    />
-    <path
-      d="M45 35 L55 35 L50 15 Z"
-      fill="darkgray"
-      stroke="white"
-      strokeWidth="1"
-    />
-    <path
-      d="M35 45 L35 55 L15 50 Z"
-      fill="darkgray"
-      stroke="white"
-      strokeWidth="1"
-    />
-    <path
-      d="M65 45 L65 55 L85 50 Z"
-      fill="darkgray"
-      stroke="white"
-      strokeWidth="1"
-    />
-    <circle cx="50" cy="50" r="5" fill="darkgray" stroke="white" />
+const Airplane = () => (
+  <svg viewBox="0 0 16 16" className="w-full h-full">
+    {/* Center line */}
+    <rect x="7" y="0" width="2" height="16" fill="#4FB8E3" />
+
+    {/* Main body */}
+    <rect x="6" y="2" width="4" height="12" fill="#4FB8E3" />
+    <rect x="5" y="3" width="6" height="10" fill="#4FB8E3" />
+    <rect x="4" y="4" width="8" height="8" fill="#4FB8E3" />
+
+    {/* Wings */}
+    <rect x="2" y="6" width="12" height="4" fill="#4FB8E3" />
+    <rect x="1" y="7" width="14" height="2" fill="#4FB8E3" />
+    <rect x="0" y="8" width="16" height="1" fill="#4FB8E3" />
+
+    {/* Orange accents */}
+    <rect x="3" y="9" width="2" height="1" fill="#FFA500" />
+    <rect x="11" y="9" width="2" height="1" fill="#FFA500" />
+    <rect x="4" y="10" width="1" height="1" fill="#FFA500" />
+    <rect x="11" y="10" width="1" height="1" fill="#FFA500" />
+
+    {/* Red accents */}
+    <rect x="3" y="10" width="1" height="1" fill="#FF0000" />
+    <rect x="12" y="10" width="1" height="1" fill="#FF0000" />
+    <rect x="4" y="11" width="1" height="1" fill="#FF0000" />
+    <rect x="11" y="11" width="1" height="1" fill="#FF0000" />
   </svg>
 );
 
@@ -188,82 +187,83 @@ const AirplaneFighter = () => {
   };
 
   return (
-    <div className="w-full max-w-lg mx-auto p-4">
-      <div className="text-center mb-4">
-        <div className="text-xl font-bold mb-2">Score: {gameState.score}</div>
-        {!gameState.isPlaying && !gameState.gameOver && (
-          <button
-            onClick={startGame}
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Start Game
-          </button>
-        )}
-        {gameState.gameOver && (
-          <div>
-            <div className="text-red-500 text-xl mb-2">Game Over!</div>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
+      <div className="w-full max-w-lg">
+        <div className="text-center mb-4">
+          <div className="text-xl font-bold mb-2">Score: {gameState.score}</div>
+          {!gameState.isPlaying && !gameState.gameOver && (
             <button
               onClick={startGame}
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
             >
-              Play Again
+              Start Game
             </button>
-          </div>
-        )}
-      </div>
-      <div
-        className="relative bg-gray-900 mx-auto overflow-hidden"
-        style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}
-      >
-        {gameState.isPlaying && (
-          <>
-            {/* Player */}
-            <div
-              className="absolute"
-              style={{
-                left: gameState.playerPosition.x,
-                top: gameState.playerPosition.y,
-                width: 40,
-                height: 40,
-              }}
-            >
-              <Airplane color="#3B82F6" />
+          )}
+          {gameState.gameOver && (
+            <div>
+              <div className="text-red-500 text-xl mb-2">Game Over!</div>
+              <button
+                onClick={startGame}
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              >
+                Play Again
+              </button>
             </div>
-
-            {/* Bullets */}
-            {gameState.bullets.map((bullet) => (
+          )}
+        </div>
+        <div
+          className="relative bg-gray-900 mx-auto overflow-hidden"
+          style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}
+        >
+          {/* Game content remains the same */}
+          {gameState.isPlaying && (
+            <>
               <div
-                key={bullet.id}
-                className="absolute bg-yellow-400 rounded-full"
-                style={{
-                  left: bullet.x,
-                  top: bullet.y,
-                  width: 5,
-                  height: 10,
-                }}
-              />
-            ))}
-
-            {/* Enemies */}
-            {gameState.enemies.map((enemy) => (
-              <div
-                key={enemy.id}
                 className="absolute"
                 style={{
-                  left: enemy.x,
-                  top: enemy.y,
-                  width: 30,
-                  height: 30,
+                  left: gameState.playerPosition.x,
+                  top: gameState.playerPosition.y,
+                  width: 40,
+                  height: 40,
                 }}
               >
-                <Airplane color="#EF4444" />
+                <Airplane />
               </div>
-            ))}
-          </>
-        )}
-      </div>
-      <div className="text-center mt-4 text-sm text-gray-600">
-        Use arrow keys to move, space to shoot
+
+              {gameState.bullets.map((bullet) => (
+                <div
+                  key={bullet.id}
+                  className="absolute bg-yellow-400 rounded-full"
+                  style={{
+                    left: bullet.x,
+                    top: bullet.y,
+                    width: 5,
+                    height: 10,
+                  }}
+                />
+              ))}
+
+              {gameState.enemies.map((enemy) => (
+                <div
+                  key={enemy.id}
+                  className="absolute"
+                  style={{
+                    left: enemy.x,
+                    top: enemy.y,
+                    width: 30,
+                    height: 30,
+                    transform: "rotate(180deg)",
+                  }}
+                >
+                  <Airplane />
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+        <div className="text-center mt-4 text-sm text-gray-600">
+          Use arrow keys to move, space to shoot
+        </div>
       </div>
     </div>
   );
