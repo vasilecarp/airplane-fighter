@@ -29,6 +29,10 @@ const ENEMY_SPAWN_PROBABILITY = 0.02;
 // Constant for frame rate
 const FRAME_RATE = 60;
 
+// Constants for explosion
+const EXPLOSION_DURATION = 500; // milliseconds
+const EXPLOSION_PARTICLES = 12; // number of particles in explosion
+
 const AirplaneFighter = () => {
   const [gameState, setGameState] = useState({
     isPlaying: false,
@@ -36,6 +40,7 @@ const AirplaneFighter = () => {
     playerPosition: { x: 50, y: 80 },
     bullets: [],
     enemies: [],
+    explosions: [],
     gameOver: false,
   });
 
@@ -96,9 +101,53 @@ const AirplaneFighter = () => {
     return updatedEnemies;
   };
 
+  const createExplosion = (x, y) => {
+    const particles = [];
+    for (let i = 0; i < EXPLOSION_PARTICLES; i++) {
+      const angle = (Math.PI * 2 * i) / EXPLOSION_PARTICLES;
+      particles.push({
+        x,
+        y,
+        dx: Math.cos(angle) * 2,
+        dy: Math.sin(angle) * 2,
+        alpha: 1,
+        size: ENEMY_WIDTH / 3,
+      });
+    }
+    return {
+      id: Date.now(),
+      particles,
+      createdAt: Date.now(),
+    };
+  };
+
+  const updateExplosions = (explosions) => {
+    return explosions
+      .map((explosion) => {
+        const age = Date.now() - explosion.createdAt;
+        if (age >= EXPLOSION_DURATION) return null;
+
+        const progress = age / EXPLOSION_DURATION;
+        const updatedParticles = explosion.particles.map((particle) => ({
+          ...particle,
+          x: particle.x + particle.dx,
+          y: particle.y + particle.dy,
+          alpha: 1 - progress,
+          size: particle.size * (1 - progress * 0.5),
+        }));
+
+        return {
+          ...explosion,
+          particles: updatedParticles,
+        };
+      })
+      .filter(Boolean);
+  };
+
   const checkCollisions = (bullets, enemies, playerPosition) => {
     let score = 0;
     const updatedEnemies = [...enemies];
+    const newExplosions = [];
 
     // Check bullet-enemy collisions
     bullets.forEach((bullet) => {
@@ -109,6 +158,13 @@ const AirplaneFighter = () => {
           bullet.y < enemy.y + ENEMY_HEIGHT &&
           bullet.y + BULLET_HEIGHT > enemy.y
         ) {
+          // Create explosion at enemy position
+          newExplosions.push(
+            createExplosion(
+              enemy.x + ENEMY_WIDTH / 2,
+              enemy.y + ENEMY_HEIGHT / 2
+            )
+          );
           updatedEnemies.splice(index, 1);
           score += 10;
         }
@@ -124,7 +180,7 @@ const AirplaneFighter = () => {
         playerPosition.y + PLAYER_HEIGHT > enemy.y
     );
 
-    return { updatedEnemies, score, gameOver };
+    return { updatedEnemies, score, gameOver, newExplosions };
   };
 
   // Handle keyboard input
@@ -168,13 +224,21 @@ const AirplaneFighter = () => {
           updatedEnemies: finalEnemies,
           score,
           gameOver,
+          newExplosions,
         } = checkCollisions(updatedBullets, updatedEnemies, newPlayerPosition);
+
+        // Update existing explosions and add new ones
+        const updatedExplosions = [
+          ...updateExplosions(prev.explosions),
+          ...newExplosions,
+        ];
 
         return {
           ...prev,
           playerPosition: newPlayerPosition,
           bullets: updatedBullets,
           enemies: finalEnemies,
+          explosions: updatedExplosions,
           score: prev.score + score,
           gameOver,
         };
@@ -191,6 +255,7 @@ const AirplaneFighter = () => {
       playerPosition: { x: 50, y: 80 },
       bullets: [],
       enemies: [],
+      explosions: [],
       gameOver: false,
     });
   };
@@ -226,6 +291,7 @@ const AirplaneFighter = () => {
         >
           {gameState.isPlaying && (
             <>
+              {/* Player */}
               <div
                 className="absolute"
                 style={{
@@ -238,6 +304,7 @@ const AirplaneFighter = () => {
                 <Airplane />
               </div>
 
+              {/* Bullets */}
               {gameState.bullets.map((bullet) => (
                 <div
                   key={bullet.id}
@@ -251,6 +318,7 @@ const AirplaneFighter = () => {
                 />
               ))}
 
+              {/* Enemies */}
               {gameState.enemies.map((enemy) => (
                 <div
                   key={enemy.id}
@@ -264,6 +332,26 @@ const AirplaneFighter = () => {
                   }}
                 >
                   <Airplane />
+                </div>
+              ))}
+
+              {/* Explosions */}
+              {gameState.explosions.map((explosion) => (
+                <div key={explosion.id} className="absolute">
+                  {explosion.particles.map((particle, index) => (
+                    <div
+                      key={index}
+                      className="absolute bg-orange-500 rounded-full"
+                      style={{
+                        left: particle.x,
+                        top: particle.y,
+                        width: particle.size,
+                        height: particle.size,
+                        opacity: particle.alpha,
+                        transform: `translate(-50%, -50%)`,
+                      }}
+                    />
+                  ))}
                 </div>
               ))}
             </>
