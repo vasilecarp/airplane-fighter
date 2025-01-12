@@ -1,42 +1,33 @@
 import { useState, useEffect } from "react";
-import PropTypes from "prop-types";
+import Airplane from "./Airplane";
 
-const Airplane = () => (
-  <svg viewBox="0 0 16 16" className="w-full h-full">
-    {/* Center line */}
-    <rect x="7" y="0" width="2" height="16" fill="#4FB8E3" />
+// Constants for game dimensions
+const GAME_WIDTH = 400;
+const GAME_HEIGHT = 600;
 
-    {/* Main body */}
-    <rect x="6" y="2" width="4" height="12" fill="#4FB8E3" />
-    <rect x="5" y="3" width="6" height="10" fill="#4FB8E3" />
-    <rect x="4" y="4" width="8" height="8" fill="#4FB8E3" />
+// Constants for player, bullet, and enemy speeds
+const PLAYER_SPEED = 5;
+const BULLET_SPEED = 7;
+const ENEMY_SPEED = 3;
 
-    {/* Wings */}
-    <rect x="2" y="6" width="12" height="4" fill="#4FB8E3" />
-    <rect x="1" y="7" width="14" height="2" fill="#4FB8E3" />
-    <rect x="0" y="8" width="16" height="1" fill="#4FB8E3" />
+// Constants for player and enemy dimensions
+const PLAYER_WIDTH = 40;
+const PLAYER_HEIGHT = 40;
+const ENEMY_WIDTH = 30;
+const ENEMY_HEIGHT = 30;
 
-    {/* Orange accents */}
-    <rect x="3" y="9" width="2" height="1" fill="#FFA500" />
-    <rect x="11" y="9" width="2" height="1" fill="#FFA500" />
-    <rect x="4" y="10" width="1" height="1" fill="#FFA500" />
-    <rect x="11" y="10" width="1" height="1" fill="#FFA500" />
+// Constant for bullet dimensions
+const BULLET_WIDTH = 5;
+const BULLET_HEIGHT = 10;
 
-    {/* Red accents */}
-    <rect x="3" y="10" width="1" height="1" fill="#FF0000" />
-    <rect x="12" y="10" width="1" height="1" fill="#FF0000" />
-    <rect x="4" y="11" width="1" height="1" fill="#FF0000" />
-    <rect x="11" y="11" width="1" height="1" fill="#FF0000" />
-  </svg>
-);
+// Constant for maximum number of bullets
+const MAX_BULLETS = 5;
 
-Airplane.propTypes = {
-  color: PropTypes.string,
-};
+// Constant for enemy spawn probability
+const ENEMY_SPAWN_PROBABILITY = 0.02;
 
-Airplane.defaultProps = {
-  color: "#3B82F6",
-};
+// Constant for frame rate
+const FRAME_RATE = 60;
 
 const AirplaneFighter = () => {
   const [gameState, setGameState] = useState({
@@ -56,11 +47,85 @@ const AirplaneFighter = () => {
     Space: false,
   });
 
-  const GAME_WIDTH = 400;
-  const GAME_HEIGHT = 600;
-  const PLAYER_SPEED = 5;
-  const BULLET_SPEED = 7;
-  const ENEMY_SPEED = 3;
+  const movePlayer = (position, keys) => {
+    let { x, y } = position;
+
+    if (keys.ArrowLeft) x = Math.max(0, x - PLAYER_SPEED);
+    if (keys.ArrowRight)
+      x = Math.min(GAME_WIDTH - PLAYER_WIDTH, x + PLAYER_SPEED);
+    if (keys.ArrowUp) y = Math.max(0, y - PLAYER_SPEED);
+    if (keys.ArrowDown)
+      y = Math.min(GAME_HEIGHT - PLAYER_HEIGHT, y + PLAYER_SPEED);
+
+    return { x, y };
+  };
+
+  const updateBullets = (bullets, playerPosition, keys) => {
+    // Move existing bullets
+    const updatedBullets = bullets
+      .map((bullet) => ({ ...bullet, y: bullet.y - BULLET_SPEED }))
+      .filter((bullet) => bullet.y > 0);
+
+    // Add new bullet if space is pressed
+    if (keys.Space && bullets.length < MAX_BULLETS) {
+      updatedBullets.push({
+        x: playerPosition.x + PLAYER_WIDTH / 2 - BULLET_WIDTH / 2,
+        y: playerPosition.y,
+        id: Date.now(),
+      });
+    }
+
+    return updatedBullets;
+  };
+
+  const updateEnemies = (enemies) => {
+    // Move existing enemies
+    const updatedEnemies = enemies
+      .map((enemy) => ({ ...enemy, y: enemy.y + ENEMY_SPEED }))
+      .filter((enemy) => enemy.y < GAME_HEIGHT);
+
+    // Spawn new enemies
+    if (Math.random() < ENEMY_SPAWN_PROBABILITY) {
+      updatedEnemies.push({
+        x: Math.random() * (GAME_WIDTH - ENEMY_WIDTH),
+        y: -ENEMY_HEIGHT,
+        id: Date.now(),
+      });
+    }
+
+    return updatedEnemies;
+  };
+
+  const checkCollisions = (bullets, enemies, playerPosition) => {
+    let score = 0;
+    const updatedEnemies = [...enemies];
+
+    // Check bullet-enemy collisions
+    bullets.forEach((bullet) => {
+      updatedEnemies.forEach((enemy, index) => {
+        if (
+          bullet.x < enemy.x + ENEMY_WIDTH &&
+          bullet.x + BULLET_WIDTH > enemy.x &&
+          bullet.y < enemy.y + ENEMY_HEIGHT &&
+          bullet.y + BULLET_HEIGHT > enemy.y
+        ) {
+          updatedEnemies.splice(index, 1);
+          score += 10;
+        }
+      });
+    });
+
+    // Check player-enemy collisions
+    const gameOver = updatedEnemies.some(
+      (enemy) =>
+        playerPosition.x < enemy.x + ENEMY_WIDTH &&
+        playerPosition.x + PLAYER_WIDTH > enemy.x &&
+        playerPosition.y < enemy.y + ENEMY_HEIGHT &&
+        playerPosition.y + PLAYER_HEIGHT > enemy.y
+    );
+
+    return { updatedEnemies, score, gameOver };
+  };
 
   // Handle keyboard input
   useEffect(() => {
@@ -91,86 +156,30 @@ const AirplaneFighter = () => {
 
     const gameLoop = setInterval(() => {
       setGameState((prev) => {
-        // Move player
-        let newX = prev.playerPosition.x;
-        let newY = prev.playerPosition.y;
+        const newPlayerPosition = movePlayer(prev.playerPosition, keys);
+        const updatedBullets = updateBullets(
+          prev.bullets,
+          newPlayerPosition,
+          keys
+        );
+        const updatedEnemies = updateEnemies(prev.enemies);
 
-        if (keys.ArrowLeft) newX = Math.max(0, newX - PLAYER_SPEED);
-        if (keys.ArrowRight)
-          newX = Math.min(GAME_WIDTH - 40, newX + PLAYER_SPEED);
-        if (keys.ArrowUp) newY = Math.max(0, newY - PLAYER_SPEED);
-        if (keys.ArrowDown)
-          newY = Math.min(GAME_HEIGHT - 40, newY + PLAYER_SPEED);
-
-        // Move bullets
-        const updatedBullets = prev.bullets
-          .map((bullet) => ({ ...bullet, y: bullet.y - BULLET_SPEED }))
-          .filter((bullet) => bullet.y > 0);
-
-        // Move enemies
-        const updatedEnemies = prev.enemies
-          .map((enemy) => ({ ...enemy, y: enemy.y + ENEMY_SPEED }))
-          .filter((enemy) => enemy.y < GAME_HEIGHT);
-
-        // Spawn new enemies
-        if (Math.random() < 0.02) {
-          updatedEnemies.push({
-            x: Math.random() * (GAME_WIDTH - 30),
-            y: -30,
-            id: Date.now(),
-          });
-        }
-
-        // Check collisions
-        let newScore = prev.score;
-        let gameOver = prev.gameOver;
-
-        // Bullet hits enemy
-        updatedBullets.forEach((bullet) => {
-          updatedEnemies.forEach((enemy, index) => {
-            if (
-              bullet.x < enemy.x + 30 &&
-              bullet.x + 5 > enemy.x &&
-              bullet.y < enemy.y + 30 &&
-              bullet.y + 10 > enemy.y
-            ) {
-              updatedEnemies.splice(index, 1);
-              newScore += 10;
-            }
-          });
-        });
-
-        // Enemy hits player
-        updatedEnemies.forEach((enemy) => {
-          if (
-            newX < enemy.x + 30 &&
-            newX + 40 > enemy.x &&
-            newY < enemy.y + 30 &&
-            newY + 40 > enemy.y
-          ) {
-            gameOver = true;
-          }
-        });
-
-        // Add new bullet if space is pressed
-        if (keys.Space && prev.bullets.length < 5) {
-          updatedBullets.push({
-            x: newX + 17.5,
-            y: newY,
-            id: Date.now(),
-          });
-        }
+        const {
+          updatedEnemies: finalEnemies,
+          score,
+          gameOver,
+        } = checkCollisions(updatedBullets, updatedEnemies, newPlayerPosition);
 
         return {
           ...prev,
-          playerPosition: { x: newX, y: newY },
+          playerPosition: newPlayerPosition,
           bullets: updatedBullets,
-          enemies: updatedEnemies,
-          score: newScore,
+          enemies: finalEnemies,
+          score: prev.score + score,
           gameOver,
         };
       });
-    }, 1000 / 60); // 60 FPS
+    }, 1000 / FRAME_RATE);
 
     return () => clearInterval(gameLoop);
   }, [gameState.isPlaying, gameState.gameOver, keys]);
@@ -215,7 +224,6 @@ const AirplaneFighter = () => {
           className="relative bg-gray-900 mx-auto overflow-hidden"
           style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}
         >
-          {/* Game content remains the same */}
           {gameState.isPlaying && (
             <>
               <div
@@ -223,8 +231,8 @@ const AirplaneFighter = () => {
                 style={{
                   left: gameState.playerPosition.x,
                   top: gameState.playerPosition.y,
-                  width: 40,
-                  height: 40,
+                  width: PLAYER_WIDTH,
+                  height: PLAYER_HEIGHT,
                 }}
               >
                 <Airplane />
@@ -237,8 +245,8 @@ const AirplaneFighter = () => {
                   style={{
                     left: bullet.x,
                     top: bullet.y,
-                    width: 5,
-                    height: 10,
+                    width: BULLET_WIDTH,
+                    height: BULLET_HEIGHT,
                   }}
                 />
               ))}
@@ -250,8 +258,8 @@ const AirplaneFighter = () => {
                   style={{
                     left: enemy.x,
                     top: enemy.y,
-                    width: 30,
-                    height: 30,
+                    width: ENEMY_WIDTH,
+                    height: ENEMY_HEIGHT,
                     transform: "rotate(180deg)",
                   }}
                 >
